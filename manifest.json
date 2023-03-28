@@ -1,51 +1,48 @@
 {
-    "author": "Daveight",
-    "background": {
-      "persistent": true, 
-      "scripts": [
-        "face-api.js",
-        "background.js"
+  "manifest_version": 3,
+  "name": "Face Detection Plugin",
+  "version": "1.0",
+  "description": "Detect faces in images using Face-API.js",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "activeTab"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["models/*"],
+      "matches": [
+        "http://*/*",
+        "https://*/*"
       ]
-    }, 
-    "browser_action": {
-      "default_icon": {
-        "16": "icons/logo-16.png",
-        "19": "icons/logo-19.png",
-        "20": "icons/logo-20.png",
-        "32": "icons/logo-32.png",
-        "38": "icons/logo-38.png",
-        "40": "icons/logo-40.png"
-      }, 
-      "default_title": "Putin Face Block"
-    }, 
-    "content_scripts": [
-      {
-        "all_frames": true, 
-        "js": [
-            "contentscript.js"
-        ], 
-        "match_about_blank": true, 
-        "matches": [
-          "http://*/*", 
-          "https://*/*"
-        ], 
-        "run_at": "document_end"
-      }
-    ], 
-    "description": "Detect and block face of Putin on the Web",
-    "icons": {
-      "128": "icons/logo-128.png",
+    }
+  ],
+  "host_permissions": [
+    "https://*/*"
+  ],
+  "content_scripts": [
+    {
+      "all_frames": true,
+      "js": [
+        "face-api.js",
+        "contentscript.js"
+      ],
+      "match_about_blank": true,
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "run_at": "document_end"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
       "16": "icons/logo-16.png",
       "32": "icons/logo-32.png",
       "48": "icons/logo-48.png",
-      "64": "icons/logo-64.png"
-    }, 
-    "manifest_version": 2, 
-    "minimum_chrome_version": "49.0",
-    "name": "Putin Face Block",
-    "permissions": [
-      "tabs"
-    ], 
-    "short_name": "Putin Face Block",
-    "version": "0.1"
+      "128": "icons/logo-128.png"
+    }
   }
+}
