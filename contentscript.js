@@ -1,72 +1,172 @@
-const imageCache = { }
-let idx = 0
-const messageQueue = []
-const batchDelay = 500
-const batchSize = 1
-let batchTimerId = null
+(async function() {
+    const _cache = {}
+    const _queue = []
+    let _currId = 0
 
-function addToQueue(message) {
-    messageQueue.push(message)
-    if (!batchTimerId) {
-        batchTimerId = setTimeout(sendBatch, batchDelay);
+    const BATCH_DELAY_MS = 500
+    const BATCH_SIZE = 1
+    let _timerId = null
+
+    const FACES_LOCATION_DIR = 'icons/detailed/faces'
+    const MIN_CONFIDENCE = 0.5
+    const FACE_DESCRIPTORS = [
+        [-0.08738790452480316, 0.13434045016765594, 0.07242529094219208, -0.06449253857135773, -0.1390770971775055, -0.008426382206380367, -0.08558874577283859, -0.008910290896892548, 0.07734987139701843, 0.012083122506737709, 0.23974847793579102, -0.05153511464595795, -0.29608583450317383, 0.0018821518169716, 0.0014863350661471486, 0.13285742700099945, -0.1810779869556427, -0.056625477969646454, -0.18908323347568512, -0.1452551633119583, -0.028827577829360962, 0.07642870396375656, 0.03990989550948143, -0.013842170126736164, -0.04416308179497719, -0.297960102558136, -0.05418336018919945, -0.06640768051147461, 0.13682548701763153, -0.12098360061645508, -0.0010928668780252337, -0.002863649744540453, -0.1877831369638443, -0.13892975449562073, -0.009264776483178139, 0.05442128702998161, -0.11413873732089996, -0.12218120694160461, 0.17544947564601898, -0.015992486849427223, -0.13109682500362396, 0.04639200493693352, 0.04479581117630005, 0.2370961457490921, 0.21731989085674286, 0.029415544122457504, 0.07265987992286682, -0.10080059617757797, 0.018771780654788017, -0.23145204782485962, 0.06159493327140808, 0.20308083295822144, 0.12118165194988251, 0.1294671893119812, 0.034237127751111984, -0.11889243125915527, -0.006328331772238016, 0.198556050658226, -0.13213980197906494, 0.022210530936717987, 0.06467590481042862, -0.05128052458167076, 0.004609315190464258, -0.07013114541769028, 0.23303234577178955, 0.1540401130914688, -0.07184309512376785, -0.17477579414844513, 0.2050251066684723, -0.07785248756408691, -0.1655711829662323, 0.007299922406673431, -0.10642349720001221, -0.06336986273527145, -0.31055590510368347, 0.07849773019552231, 0.3000868856906891, -0.0027693966403603554, -0.16352611780166626, 0.03459789603948593, -0.06553388386964798, -0.0802304670214653, -0.0422518327832222, 0.10701616108417511, -0.13553090393543243, -0.0834207609295845, -0.03965029492974281, 0.07028008252382278, 0.17309772968292236, -0.08874070644378662, 0.016174321994185448, 0.13175934553146362, 0.05693906545639038, -0.019088441506028175, 0.09688809514045715, 0.13557711243629456, -0.12925544381141663, 0.0037157631013542414, -0.11592108011245728, 0.011748289689421654, 0.11708546429872513, -0.11375217139720917, 0.004869414027780294, 0.12758676707744598, -0.11119741201400757, 0.16416965425014496, -0.00784777756780386, -0.058706190437078476, 0.017422568053007126, -0.05710025876760483, 0.04752657562494278, -0.033241622149944305, 0.20243708789348602, -0.17760902643203735, 0.2749921977519989, 0.19735974073410034, -0.015268810093402863, 0.11610019207000732, 0.0842566192150116, 0.1300399899482727, 0.007076047360897064, 0.03213266655802727, -0.16618743538856506, -0.09783802181482315, 0.0031458947341889143, 0.018029605969786644, -0.04719894751906395, 0.10811492800712585],
+        [-0.04411330074071884, 0.1301950067281723, 0.05472397431731224, -0.09032278507947922, -0.11146020889282227, -0.006836626213043928, -0.11352645605802536, -0.04325646162033081, 0.1090243011713028, -0.04078420624136925, 0.20933353900909424, -0.011281353421509266, -0.2965187430381775, 0.07034771889448166, -0.01015519443899393, 0.08858337998390198, -0.20705297589302063, -0.04733288288116455, -0.21995878219604492, -0.18382161855697632, -0.01741074211895466, 0.10097470134496689, 0.030799243599176407, -0.07082745432853699, -0.06983457505702972, -0.2382315844297409, -0.0494333915412426, -0.03192061185836792, 0.14702999591827393, -0.08025906980037689, -0.019688958302140236, -0.022510269656777382, -0.21287721395492554, -0.10962443798780441, 0.01857246272265911, 0.040136806666851044, -0.07469412684440613, -0.0914577841758728, 0.23107391595840454, 0.029424035921692848, -0.15381136536598206, 0.04511372745037079, 0.0489695779979229, 0.19753319025039673, 0.22230584919452667, 0.020140374079346657, -0.011134453117847443, -0.07854236662387848, 0.07171349227428436, -0.27284079790115356, 0.06681476533412933, 0.23398073017597198, 0.10130489617586136, 0.1291198879480362, 0.021028146147727966, -0.15466126799583435, 0.0018338835798203945, 0.17028753459453583, -0.10451865196228027, 0.016199329867959023, 0.10342303663492203, -0.15285281836986542, -0.05489443242549896, -0.04607023298740387, 0.1923145055770874, 0.120096854865551, -0.07118435949087143, -0.16843903064727783, 0.22354668378829956, -0.041417114436626434, -0.1315038651227951, 0.02253146842122078, -0.08483071625232697, -0.06380224972963333, -0.28118112683296204, 0.06709809601306915, 0.361055463552475, 0.020169522613286972, -0.16872629523277283, 0.07123637944459915, -0.12026365101337433, -0.06459508836269379, 0.003757747355848551, 0.04079396277666092, -0.11106981337070465, -0.043877214193344116, -0.03577141836285591, 0.0722770094871521, 0.2063419669866562, -0.08740092813968658, -0.012873688712716103, 0.16096128523349762, 0.04953707382082939, 0.04765670374035835, 0.11548185348510742, 0.12922529876232147, -0.11035435646772385, -0.0773933082818985, -0.1710532158613205, 0.00820182915776968, 0.13579359650611877, -0.14844340085983276, -0.01815004087984562, 0.1187627837061882, -0.15571771562099457, 0.17558395862579346, 0.039048418402671814, -0.07935830950737, 0.029361477121710777, -0.04918430373072624, 0.028081651777029037, -0.024418354034423828, 0.22274765372276306, -0.2125309705734253, 0.2907784581184387, 0.20480570197105408, -0.0007993026520125568, 0.1479574590921402, 0.1099357008934021, 0.09455881267786026, 0.010287000797688961, 0.017002535983920097, -0.17492759227752686, -0.17774353921413422, -0.02540167048573494, 0.05359683185815811, -0.028833499178290367, 0.1187010183930397],
+        [-0.13821189105510712, 0.17248719930648804, 0.10066649317741394, -0.011356835253536701, -0.0987773984670639, -0.01251791138201952, -0.05757768079638481, -0.09705720841884613, 0.07695147395133972, 0.010521456599235535, 0.24697840213775635, -0.038978978991508484, -0.2831283509731293, -0.07772648334503174, -0.04573221504688263, 0.1288021355867386, -0.1528501808643341, -0.10563860088586807, -0.18748816847801208, -0.12238488346338272, -0.011697322130203247, -0.00027816189685836434, 0.011860611848533154, -0.03346765786409378, -0.10527929663658142, -0.2587414085865021, -0.015978028997778893, -0.07329684495925903, 0.07535138726234436, -0.1441342532634735, -0.012057353742420673, 0.0959709882736206, -0.17650480568408966, -0.061351675540208817, 0.008494189009070396, 0.08358284831047058, 0.012188773602247238, -0.016457628458738327, 0.17623116075992584, -0.08483994007110596, -0.16024987399578094, -0.007301955483853817, 0.022174961864948273, 0.2569783329963684, 0.2444027066230774, -0.0014759562909603119, -0.023478521034121513, -0.03264651820063591, 0.04234395548701286, -0.28647124767303467, -0.033281899988651276, 0.2186404913663864, 0.06915214657783508, 0.07798103988170624, 0.033218611031770706, -0.15077358484268188, -0.013398387469351292, 0.09268651157617569, -0.14406755566596985, -0.005478867795318365, 0.059873316437006, -0.15335063636302948, -0.11246699094772339, -0.11746641248464584, 0.16514724493026733, 0.1248691976070404, -0.12526938319206238, -0.15011128783226013, 0.14844965934753418, -0.10796882212162018, -0.018947795033454895, 0.09765317291021347, -0.10771464556455612, -0.14260876178741455, -0.2568988502025604, 0.052684858441352844, 0.3976438343524933, 0.12055666744709015, -0.23843617737293243, 0.00438897218555212, -0.10011621564626694, -0.010638276115059853, 0.03702451288700104, -0.012072770856320858, -0.09460531920194626, -0.012645162642002106, -0.09409035742282867, 0.05226615443825722, 0.1556779444217682, -0.05542973801493645, -0.002245906740427017, 0.17499864101409912, 0.0036313203163444996, 0.0030786353163421154, 0.030369704589247704, 0.07582123577594757, -0.033075105398893356, -0.01858518458902836, -0.13676923513412476, 0.020020749419927597, 0.09949778765439987, -0.13915713131427765, 0.022205619141459465, 0.07210046052932739, -0.0934024453163147, 0.1195974349975586, 0.02600620500743389, 0.04052438214421272, 0.0028124854434281588, -0.03981505706906319, -0.03461149334907532, -0.008395225740969181, 0.23679620027542114, -0.2492726445198059, 0.25242191553115845, 0.21761293709278107, -0.061611175537109375, 0.09509429335594177, 0.09282553941011429, 0.11238627135753632, -0.021518586203455925, -0.009017487987875938, -0.08426021039485931, -0.12660209834575653, 0.0298630241304636, -0.05058180168271065, -0.0004977725329808891, 0.014717994257807732]
+    ]
+    function submitImageForRecognition(image) {
+        _queue.push(image)
+        if (!_timerId) {
+            _timerId = setTimeout(submitImageBatch, BATCH_DELAY_MS);
+        }
     }
-}
 
-function sendBatch() {
-    messageQueue.splice(0, batchSize).forEach(msg => chrome.runtime.sendMessage(msg))
-    if (messageQueue.length > 0) {
-        batchTimerId = setTimeout(sendBatch, batchDelay);
-    } else {
-        batchTimerId = null
+    function submitImageBatch() {
+        _queue.splice(0, BATCH_SIZE).forEach(img => recognizeFace(img))
+        if (_queue.length > 0) {
+            _timerId = setTimeout(submitImageBatch, BATCH_DELAY_MS);
+        } else {
+            _timerId = null
+        }
     }
-}
 
-function onImageLoad(image) {
-    if (image.width > 100 && image.height > 100) {
-        imageCache[++idx] = image
-        addToQueue({ source: image.currentSrc, idx: idx })
+    function handleImageLoadedEvent(image) {
+        if (image.width > 100 && image.height > 100) {
+            _cache[++_currId] = image
+            submitImageForRecognition({source: image.currentSrc || image.getAttribute('data-src'), id: _currId})
+        }
     }
-}
 
-function processImage(image) {
-    if (image.complete && image.src !== '') {
-        onImageLoad(image)
-    } else {
-        image.addEventListener('load', function() {
-            onImageLoad(this)
-        }, { once: true })
+    function bindImageLoadedEvent(image) {
+        if (image.complete && (image.src !== '' || image.getAttribute("data-src") !== '')) {
+            handleImageLoadedEvent(image)
+        } else {
+            image.addEventListener('load', () => handleImageLoadedEvent(this), { once: true })
+        }
     }
-}
 
-function onLoad() {
-  Array.from(document.images).forEach(image => {
-      processImage(image)
-  })
-}
+    function bindWindowLoadedEvent() {
+        if (window.top === window) {
+            window.addEventListener('load', handleDocumentLoadedEvent, false);
+        }
+    }
 
-window.addEventListener("load", onLoad, false);
+    function handleDocumentLoadedEvent() {
+        Array.from(document.images).forEach(image => { bindImageLoadedEvent(image); })
+    }
 
-const observer = new MutationObserver(mutations => {
-  mutations.forEach(mutation => {
-    Array.from(mutation.addedNodes)
-        .forEach((node) => {
-          if (node.getElementsByTagName) {
-            Array.prototype.slice.call(node.getElementsByTagName('img')).forEach(image => {
-                processImage(image)
-            })
-          }
+    function bindDocumentChangesObserver() {
+        const observer = new MutationObserver(mutations => {
+            mutations.forEach(mutation => {
+                Array.from(mutation.addedNodes)
+                    .forEach((node) => {
+                        if (node.getElementsByTagName) {
+                            Array.prototype.slice.call(node.getElementsByTagName('img')).forEach(image => {
+                                bindImageLoadedEvent(image)
+                            })
+                        }
+                    })
+            });
+        });
+
+        observer.observe(document.documentElement, {
+            childList: true,
+            subtree: true
         })
-  });
-});
+    }
 
-observer.observe(document.documentElement, {
-  childList: true,
-  subtree: true
-})
+    function copyImage(newImage) {
+        const image = _cache[newImage.id];
+        image.parentNode.querySelectorAll('source').forEach((src) => src.remove());
+        image.src = newImage.data
+    }
 
-chrome.runtime.onMessage.addListener(
-  function (result, sender, sendResponse) {
-      const img = imageCache[result.idx];
-      img.parentNode.querySelectorAll('source').forEach((src) => src.remove());
-      img.src = result.data
-  });
+    async function loadTargetPersona() {
+        chrome.runtime.getPackageDirectoryEntry(function (root) {
+            root.getDirectory(FACES_LOCATION_DIR, {}, function (directory) {
+                const reader = directory.createReader();
+                reader.readEntries(function (entries) {
+                    entries.forEach(function (entry) {
+                        if (entry.isFile && entry.name.endsWith('.jpg')) {
+                            const input = new Image()
+                            input.onload = async function () {
+                                let descriptor = await faceapi.allFaces(
+                                    this, MIN_CONFIDENCE
+                                );
+                                console.log(descriptor[0].descriptor.join(','))
+                            }
+                            input.src = `${FACES_LOCATION_DIR}/${entry.name}`
+                        }
+                    });
+                });
+            });
+        });
+    }
+
+    function getAveragedColor(bitmap) {
+        let sum = 0;
+        for (let i = 0; i < bitmap.data.length; i += 4) {
+            const r = bitmap.data[i];
+            const g = bitmap.data[i + 1];
+            const b = bitmap.data[i + 2];
+            const greyscale = 0.2989 * r + 0.5870 * g + 0.1140 * b;
+            sum += greyscale;
+        }
+        return Math.round(sum / (bitmap.data.length / 4));
+    }
+
+    function drawFaceBlockMask(face, image) {
+        const canvas = document.createElement('canvas');
+        canvas.width = image.width;
+        canvas.height = image.height;
+        let ctx = canvas.getContext('2d',  { willReadFrequently: true });
+        ctx.drawImage(image, 0, 0);
+        const blockSize = (face.detection._box.width + 35) / 10;
+        for (let y = face.detection._box.y - 60; y < face.detection._box.y + face.detection._box.height; y += blockSize) {
+            for (let x = face.detection._box.x - 15; x < face.detection._box.x + face.detection._box.width + 20; x += blockSize) {
+                const imageData = ctx.getImageData(x, y, blockSize, blockSize)
+                const average = getAveragedColor(imageData)
+                ctx.fillStyle = `rgb(${average},${average},${average})`
+                ctx.fillRect(x, y, blockSize, blockSize)
+            }
+        }
+        return canvas
+    }
+
+    function recognizeFace(request) {
+        let input = new Image()
+        input.src = request.source;
+        input.crossOrigin = 'anonymous'
+        input.onload = async function () {
+            const descriptions = await faceapi.allFaces(this, MIN_CONFIDENCE)
+
+            let match = descriptions.find(face => {
+                return FACE_DESCRIPTORS.find(targetDescriptor => {
+                    const distance = faceapi.euclideanDistance(targetDescriptor, face.descriptor);
+                    if (distance < MIN_CONFIDENCE) {
+                        return face
+                    }
+                })
+            });
+
+            if (match) {
+                const canvas = drawFaceBlockMask(match, this)
+                let fixedImageBase64 = canvas.toDataURL('image/png');
+                canvas.remove()
+
+                copyImage({
+                    url: this.currentSrc,
+                    data: fixedImageBase64,
+                    id: request.id,
+                })
+            }
+
+            this.remove();
+        }
+    }
+
+    bindWindowLoadedEvent()
+    bindDocumentChangesObserver()
+
+    await faceapi.loadModels(chrome.runtime.getURL('/models'));
+})();
