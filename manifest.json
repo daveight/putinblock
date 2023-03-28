@@ -10,7 +10,6 @@
     "48": "icons/logo-48.png"
   },
   "permissions": [
-    "activeTab"
   ],
   "web_accessible_resources": [
     {
