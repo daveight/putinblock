@@ -119,9 +119,9 @@
         const canvas = document.createElement('canvas');
         canvas.width = image.width;
         canvas.height = image.height;
-        let ctx = canvas.getContext('2d',  { willReadFrequently: true });
+        const ctx = canvas.getContext('2d',  { willReadFrequently: true });
         ctx.drawImage(image, 0, 0);
-        const blockSize = (face.detection._box.width + 35) / 10;
+        const blockSize = (face.detection._box.width + 35) / 6;
         for (let y = face.detection._box.y - 60; y < face.detection._box.y + face.detection._box.height; y += blockSize) {
             for (let x = face.detection._box.x - 15; x < face.detection._box.x + face.detection._box.width + 20; x += blockSize) {
                 const imageData = ctx.getImageData(x, y, blockSize, blockSize)
@@ -134,13 +134,13 @@
     }
 
     function recognizeFace(request) {
-        let input = new Image()
+        const input = new Image()
         input.src = request.source;
         input.crossOrigin = 'anonymous'
         input.onload = async function () {
             const descriptions = await faceapi.allFaces(this, MIN_CONFIDENCE)
 
-            let match = descriptions.find(face => {
+            const match = descriptions.find(face => {
                 return FACE_DESCRIPTORS.find(targetDescriptor => {
                     const distance = faceapi.euclideanDistance(targetDescriptor, face.descriptor);
                     if (distance < MIN_CONFIDENCE) {
@@ -151,7 +151,7 @@
 
             if (match) {
                 const canvas = drawFaceBlockMask(match, this)
-                let fixedImageBase64 = canvas.toDataURL('image/png');
+                const fixedImageBase64 = canvas.toDataURL('image/png');
                 canvas.remove()
 
                 copyImage({
